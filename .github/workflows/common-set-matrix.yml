@@ -25,6 +25,10 @@ jobs:
         run: |
           pwd 
           ls -al 
+
+      - name: Input Test
+        run: |
+            echo "project-name=${{ github.event.inputs.project-name }}"
       - name: GitHub Context Debug
         run: |
             echo "github.ref=${{ github.ref }}"
@@ -57,7 +61,7 @@ jobs:
     
                   export project_name=$(echo $file | awk -F "/" '{print $3}')
     
-                  echo "Folder=${account}_${project_name}_${subproject_name}"
+                  echo "Folder=${project_name}"
                   project_list+=("${project_name}")
               done
               echo "-----------------------------------------------------------------------------"
@@ -72,6 +76,8 @@ jobs:
       - name: Get project directories
         id: list_dirs
         run: |
+            export INPUT_PROJECT_NAME="${{ github.event.inputs.project-name  }}"
+            echo "INPUT_PROJECT_NAME=$INPUT_PROJECT_NAME"
             echo "---------------------------------------------"
             echo "steps.project_list.outputs.projects=${{ steps.project_list.outputs.projects }}"
             echo "---------------------------------------------"
