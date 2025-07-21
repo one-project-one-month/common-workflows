@@ -156,8 +156,22 @@ jobs:
 
           pwd
           ls -al
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 'latest'
+      
+      - name: Terraform Fmt
+        run: terraform fmt -recursive
       - name: Terraform Init
         run: terraform init -upgrade
+
+      - name: Terraform Providers Check
+        run: terraform providers
+      
+      - name: Terraform Validate
+        run: terraform validate
           
       - name: Terraform Plan
         run: terraform plan ${{ secrets.tf_vars_string }}
