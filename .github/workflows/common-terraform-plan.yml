@@ -5,9 +5,6 @@ on:
             project:
               required: true
               type: string
-            s3_enpoint:
-              required: true
-              type: string
             s3_bucket:
               required: true
               type: string
@@ -43,7 +40,6 @@ jobs:
       
       - name: Set environment variable
         run: |
-          echo "AWS_S3_ENDPOINT=${{ inputs.s3_enpoint }}" >> $GITHUB_ENV
           echo "AWS_ACCESS_KEY_ID=${{ secrets.s3_access_key }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.s3_secret_key }}" >> $GITHUB_ENV
           echo "S3_BUCKET=${{ inputs.s3_bucket }}" >> $GITHUB_ENV
@@ -53,7 +49,6 @@ jobs:
         run: |
           echo $GITHUB_ENV
           echo "-----------------------------------------------------------------------------"
-          echo $AWS_S3_ENDPOINT
           echo $AWS_ACCESS_KEY_ID
           echo $AWS_SECRET_ACCESS_KEY
           echo $S3_BUCKET    
