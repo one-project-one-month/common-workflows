@@ -191,7 +191,7 @@ jobs:
           echo "TF_OUTPUT_FILE_NAME=$TF_OUTPUT_FILE_NAME"
 
       - name: Upload Terraform Output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.TF_OUTPUT_FILE_NAME }}
           path: ${{ env.TF_OUTPUT_FILE_PATH }}
