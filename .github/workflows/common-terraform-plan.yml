@@ -98,6 +98,7 @@ jobs:
           working_directory: .
           format: sarif
           soft_fail: true
+          github_token: ${{ secrets.github_checkout_token }}
 
       - name: Terraform Plan
         run: terraform plan
