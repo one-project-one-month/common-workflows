@@ -84,6 +84,10 @@ jobs:
               echo "Project name is not provided. Run all projects."
               echo "project-name=${available_projects}" >> $GITHUB_OUTPUT
             else
-              echo "Running with specific project name is not yet supported!"
-              exit 1
+              export file="/${{ github.event.inputs.project-name }}"
+              echo "file=${file}"
+              export env=$(awk -F'"' '/env/{print $2}' ".${file//\"/}/terraform.tfvars")
+              echo "env=${env}"
+              echo "Project name is provided. Only run with project-name"
+              echo "project-name=[\"${{ github.event.inputs.project-name }}\"]" >> $GITHUB_OUTPUT
             fi
