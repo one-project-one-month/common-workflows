@@ -1,0 +1,198 @@
+name: common Terraform CD - apply
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        required: true
+        type: string
+      s3_bucket:
+        required: true
+        type: string
+      tf_provider_template:
+          required: true
+          type: string
+      
+    secrets:
+      s3_access_key: 
+        required: true
+      s3_secret_key: 
+        required: true
+      github_checkout_token:
+        required: true
+      tf_vars_string:
+          required: false
+
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/${{ inputs.project }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Test Project Detail
+      run: |
+          echo "Project: ${{ inputs.project }}"
+          echo "---------------------------- Check location ------------------------"
+          pwd
+          ls -al
+      
+    - name: Set environment variable
+      run: |
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.s3_access_key }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.s3_secret_key }}" >> $GITHUB_ENV
+          echo "S3_BUCKET=${{ inputs.s3_bucket }}" >> $GITHUB_ENV
+          echo "TF_PROVIDER_TEMPLATE=${{ inputs.tf_provider_template}}" >> $GITHUB_ENV
+
+    - name: Test ENV
+      run: |
+          echo $GITHUB_ENV
+          echo "-----------------------------------------------------------------------------"
+          echo $AWS_ACCESS_KEY_ID
+          echo $AWS_SECRET_ACCESS_KEY
+          echo $S3_BUCKET    
+   
+    - name: Prepare Provider Template
+      run: |
+          echo "-----------------------------------------------------------------------------"
+          cat ${{ inputs.tf_provider_template}}
+          echo "-----------------------------------------------------------------------------"
+
+          export project=${{ inputs.project }}
+          export s3bucket=${{ inputs.s3_bucket }}
+          
+          echo "project=${project}"
+          echo "s3bucket=${s3bucket}"
+
+          envsubst '${s3bucket},${project}' < ${{ inputs.tf_provider_template}} > providers.tf
+
+          echo "-----------------------------------------------------------------------------"
+          cat providers.tf
+          echo "-----------------------------------------------------------------------------"
+
+          pwd
+          ls -al
+      
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 'latest'
+
+    - name: Terraform Fmt
+      run: terraform fmt -recursive
+
+    - name: Terraform Init
+      run: terraform init -upgrade
+     
+    - name: Terraform Providers Check
+      run: terraform providers
+      
+    - name: Terraform Validate
+      run: terraform validate
+      
+    - name: Terraform Security Scan (tfsec)
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        working_directory: .
+        format: sarif
+        soft_fail: true
+        github_token: ${{ secrets.github_checkout_token }}
+
+    - name: Terraform Plan
+      run: terraform plan
+
+  terraform-apply:
+    runs-on: ubuntu-latest
+    needs:
+      - terraform-plan
+    environment: "deploy"
+    defaults:
+        run:
+            working-directory: projects/${{ inputs.project }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Inputs
+        run: |
+          echo "tf_vars_string=${{ secrets.tf_vars_string }}"
+      - name: Set environment variable
+        run: |
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.s3_access_key }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.s3_secret_key }}" >> $GITHUB_ENV
+          echo "S3_BUCKET=${{ inputs.s3_bucket }}" >> $GITHUB_ENV
+          echo "TF_PROVIDER_TEMPLATE=${{ inputs.tf_provider_template}}" >> $GITHUB_ENV
+
+      - name: Test ENV
+        run: |
+          echo $GITHUB_ENV
+          echo "-----------------------------------------------------------------------------"
+          echo $AWS_ACCESS_KEY_ID
+          echo $AWS_SECRET_ACCESS_KEY
+          echo $S3_BUCKET
+
+      - name: Prepare Provider Template
+        run: |
+
+          echo "-----------------------------------------------------------------------------"
+          cat ${{ inputs.tf_provider_template}}
+          echo "-----------------------------------------------------------------------------"
+
+          export project=${{ inputs.project }}
+          export s3bucket=${{ inputs.s3_bucket }}
+          
+          echo "project=${project}"
+          echo "s3bucket=${s3bucket}"
+
+          envsubst '${s3bucket},${project}' < ${{ inputs.tf_provider_template}} > providers.tf
+
+          echo "-----------------------------------------------------------------------------"
+          cat providers.tf
+          echo "-----------------------------------------------------------------------------"
+
+          pwd
+          ls -al
+      - name: Terraform Init
+        run: terraform init -upgrade
+          
+      - name: Terraform Plan
+        run: terraform plan ${{ secrets.tf_vars_string }}
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve ${{ secrets.tf_vars_string }}
+
+      - name: Terraform Output
+        run: |
+          echo "---------------------------------------------------------------------"
+          terraform output
+          echo "---------------------------------------------------------------------"
+
+          echo "---------------------------------------------------------------------"
+          terraform output -json >> terraform-output.json
+          echo "---------------------------------------------------------------------"
+          cat terraform-output.json
+          echo "---------------------------------------------------------------------"
+          pwd
+          ls -al
+          echo "---------------------------------------------------------------------"
+          cat $(pwd)/terraform-output.json
+
+          echo "TF_OUTPUT_FILE_PATH=$(pwd)/terraform-output.json" >> $GITHUB_ENV
+          echo "TF_OUTPUT_FILE_NAME=${{ inputs.project }}_terraform-output" >> $GITHUB_ENV
+
+      - name: Test TF_OUTPUT_FILE Path and Name
+        run: |
+          echo "TF_OUTPUT_FILE_PATH=$TF_OUTPUT_FILE_PATH"
+          echo "TF_OUTPUT_FILE_NAME=$TF_OUTPUT_FILE_NAME"
+
+      - name: Upload Terraform Output
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.TF_OUTPUT_FILE_NAME }}
+          path: ${{ env.TF_OUTPUT_FILE_PATH }}
+          if-no-files-found: error
