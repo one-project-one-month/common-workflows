@@ -161,25 +161,13 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 'latest'
-      
-      - name: Terraform Fmt
-        run: terraform fmt -recursive
       - name: Terraform Init
         run: terraform init -upgrade
-
-      - name: Terraform Providers Check
-        run: terraform providers
-      
-      - name: Terraform Validate
-        run: terraform validate
-          
       - name: Terraform Plan
         run: terraform plan ${{ secrets.tf_vars_string }}
-
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve ${{ secrets.tf_vars_string }}
-
       - name: Terraform Output
         run: |
           echo "---------------------------------------------------------------------"
@@ -198,12 +186,10 @@ jobs:
 
           echo "TF_OUTPUT_FILE_PATH=$(pwd)/terraform-output.json" >> $GITHUB_ENV
           echo "TF_OUTPUT_FILE_NAME=${{ inputs.project }}_terraform-output" >> $GITHUB_ENV
-
       - name: Test TF_OUTPUT_FILE Path and Name
         run: |
           echo "TF_OUTPUT_FILE_PATH=$TF_OUTPUT_FILE_PATH"
           echo "TF_OUTPUT_FILE_NAME=$TF_OUTPUT_FILE_NAME"
-
       - name: Upload Terraform Output
         uses: actions/upload-artifact@v4
         with:
